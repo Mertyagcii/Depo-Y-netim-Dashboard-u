@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0F172A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Depo Performans Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#0F172A; --card:#1E293B; --card2:#172033; --line:#334155;
+  --txt:#CBD5E1; --mut:#94A3B8; --dim:#64748B; --hi:#E2E8F0;
+  --ok:#6EE7A8; --warn:#F5D276; --bad:#F28B8B; --acc:#7AA2F7; --acc2:#5EEAD4;
+}
+*{-webkit-tap-highlight-color:transparent}
+html,body{background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}
+body{min-height:100vh;overscroll-behavior-y:none}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px}
+.card2{background:var(--card2);border:1px solid var(--line);border-radius:12px}
+.mut{color:var(--mut)} .dim{color:var(--dim)} .hi{color:var(--hi)}
+.g{color:var(--ok)} .y{color:var(--warn)} .r{color:var(--bad)} .n{color:var(--mut)}
+.bg-g{background:rgba(110,231,168,.12);border-color:rgba(110,231,168,.35)}
+.bg-y{background:rgba(245,210,118,.12);border-color:rgba(245,210,118,.35)}
+.bg-r{background:rgba(242,139,139,.13);border-color:rgba(242,139,139,.4)}
+.bg-n{background:rgba(148,163,184,.08);border-color:var(--line)}
+.kpi{padding:16px 18px;border-width:1px;border-style:solid;border-radius:16px;min-height:118px}
+.kpi .lbl{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--mut)}
+.kpi .val{font-weight:700;line-height:1.1;margin-top:6px;font-size:1.9rem;font-variant-numeric:tabular-nums}
+.kpi .sub{font-size:.78rem;color:var(--mut);margin-top:6px}
+.big .kpi{min-height:34vh;padding:22px}
+.big .kpi .val{font-size:clamp(2.6rem,9vw,5rem)}
+.big .kpi .lbl{font-size:.9rem}.big .kpi .sub{font-size:1rem}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:10px;border:1px solid var(--line);background:#243247;color:var(--hi);font-size:.85rem;cursor:pointer;min-height:40px;transition:.15s}
+.btn:hover{background:#2c3d56}.btn.p{background:#3b5bdb33;border-color:#7aa2f7;color:#bcd0ff}
+.btn.on{background:rgba(110,231,168,.15);border-color:var(--ok);color:var(--ok)}
+.inp{background:#0F172A;border:1px solid var(--line);border-radius:10px;padding:8px 10px;color:var(--hi);width:100%;min-height:40px;font-size:.9rem}
+.inp:focus{outline:2px solid #7aa2f755;border-color:var(--acc)}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;border:1px solid var(--line);font-size:.78rem;background:#243247;cursor:pointer;white-space:nowrap}
+.chip.act{background:#3b5bdb33;border-color:var(--acc);color:#bcd0ff}
+.bar{height:8px;border-radius:99px;background:#0F172A;overflow:hidden;position:relative}
+.bar>i{display:block;height:100%;border-radius:99px}
+.bar>b{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--hi);opacity:.7}
+.fill-g{background:var(--ok)}.fill-y{background:var(--warn)}.fill-r{background:var(--bad)}.fill-n{background:var(--dim)}
+.navb{display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;padding:8px 2px 6px;color:var(--mut);font-size:.68rem;background:none;border:0;cursor:pointer;min-height:56px}
+.navb svg{width:22px;height:22px}.navb.act{color:var(--acc)}
+.side{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border-radius:10px;color:var(--mut);background:none;border:0;cursor:pointer;text-align:left;font-size:.9rem}
+.side:hover{background:#243247}.side.act{background:#3b5bdb26;color:#bcd0ff}.side svg{width:20px;height:20px;flex:none}
+.sw{position:relative;width:46px;height:26px;border-radius:99px;background:#334155;border:0;cursor:pointer;flex:none;transition:.2s}
+.sw::after{content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#CBD5E1;transition:.2s}
+.sw.on{background:#3b5bdb}.sw.on::after{left:23px;background:#fff}
+table.rt{width:100%;border-collapse:collapse;font-size:.85rem}
+table.rt th{position:sticky;top:0;background:#243247;color:var(--mut);font-weight:600;text-align:left;padding:9px 12px;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
+table.rt th.s{cursor:pointer}
+table.rt td{padding:8px 12px;border-top:1px solid #2a3850}
+table.rt tr:hover td{background:#243247aa}
+.scroll{overflow:auto;max-height:520px;border-radius:12px;border:1px solid var(--line)}
+@media(max-width:767px){
+  table.rt thead{display:none}
+  table.rt,table.rt tbody{display:block}
+  .scroll{border:0;max-height:none}
+  table.rt tr{display:block;background:var(--card2);border:1px solid var(--line);border-radius:12px;margin-bottom:8px;padding:6px 4px}
+  table.rt td{display:flex;justify-content:space-between;gap:12px;border:0;padding:5px 10px;text-align:right}
+  table.rt td::before{content:attr(data-l);color:var(--dim);font-size:.72rem;text-transform:uppercase;text-align:left}
+  .kpi .val{font-size:1.7rem}
+}
+.dz{border:2px dashed var(--line);border-radius:16px;padding:28px 16px;text-align:center;cursor:pointer;transition:.15s}
+.dz.over,.dz:hover{border-color:var(--acc);background:#3b5bdb14}
+input[type=range]{width:100%;accent-color:#7aa2f7;height:32px}
+.toast{background:#243247;border:1px solid var(--line);border-left:4px solid var(--acc);border-radius:12px;padding:10px 14px;box-shadow:0 8px 24px #0008;font-size:.85rem;color:var(--hi);cursor:pointer;animation:tin .25s}
+.toast.warn{border-left-color:var(--warn)}.toast.err{border-left-color:var(--bad)}.toast.ok{border-left-color:var(--ok)}
+@keyframes tin{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+#alertBar{animation:pulse 1.6s infinite}
+code,pre{font-family:ui-monospace,Menlo,Consolas,monospace}
+pre{background:#0F172A;border:1px solid var(--line);border-radius:10px;padding:12px;overflow:auto;font-size:.78rem;color:#bcd0ff}
+.formula{background:#0F172A;border:1px solid var(--line);border-left:3px solid var(--acc);border-radius:10px;padding:12px 14px;font-family:ui-monospace,Menlo,monospace;font-size:.85rem;color:var(--hi);overflow:auto}
+details.acc>summary{cursor:pointer;list-style:none;font-weight:600;color:var(--hi);padding:14px 16px;min-height:48px;display:flex;align-items:center;justify-content:space-between}
+details.acc>summary::-webkit-details-marker{display:none}
+details.acc>summary::after{content:'+';color:var(--mut);font-size:1.3rem}
+details.acc[open]>summary::after{content:'–'}
+.view{display:none}.view.show{display:block}
+.pad-b{padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+@media(min-width:768px){.pad-b{padding-bottom:24px}}
+</style>
+</head>
+<body>
+
+<!-- ÜST BANT: uyarı + başlık -->
+<div class="sticky top-0 z-40" style="padding-top:env(safe-area-inset-top);background:var(--bg)">
+  <div id="alertBar" class="hidden" style="background:#7f1d1d;color:#fecaca;border-bottom:1px solid #ef4444"></div>
+  <header class="flex items-center gap-2 md:gap-3 px-3 md:px-5 h-14" style="border-bottom:1px solid var(--line);background:rgba(15,23,42,.95);backdrop-filter:blur(8px)">
+    <div class="flex items-center gap-2 mr-auto min-w-0">
+      <div class="w-8 h-8 rounded-lg flex items-center justify-center font-bold" style="background:#3b5bdb33;color:var(--acc)">D</div>
+      <div class="min-w-0">
+        <div class="hi font-semibold text-sm leading-tight truncate">Depo Performans</div>
+        <div id="srcInfo" class="dim text-[11px] leading-tight truncate"></div>
+      </div>
+    </div>
+    <button class="btn p" onclick="openModal()" title="Excel / API bağlantısı"><span>⇪</span><span class="hidden sm:inline">Veri Bağla</span></button>
+    <button id="btnNotif" class="btn" onclick="askNotif()" title="Tarayıcı bildirimleri">🔔<span class="hidden lg:inline" id="notifLbl">Bildirim</span></button>
+    <button id="btnSound" class="btn on" onclick="toggleSound()" title="Ses">🔊</button>
+    <label class="flex items-center gap-2 cursor-pointer" title="Executive / Odak Modu">
+      <span class="hidden md:inline text-xs mut">Odak Modu</span>
+      <button id="swExec" class="sw" onclick="toggleExec()" aria-label="Odak modu"></button>
+    </label>
+  </header>
+</div>
+
+<div class="flex">
+  <!-- Masaüstü yan menü -->
+  <aside class="hidden md:flex flex-col gap-1 w-56 shrink-0 p-3 sticky self-start" style="top:56px;height:calc(100vh - 56px);border-right:1px solid var(--line)">
+    <div id="sideMain" class="flex flex-col gap-1"></div>
+    <div id="sideDynT" class="dim text-[11px] uppercase tracking-wider px-3 mt-4 hidden">Dinamik sayfalar</div>
+    <div id="sideDyn" class="flex flex-col gap-1 overflow-auto"></div>
+  </aside>
+
+  <main class="flex-1 min-w-0 p-3 md:p-5 pad-b max-w-[1400px]">
+    <section id="v-ozet" class="view"></section>
+    <section id="v-perf" class="view"></section>
+    <section id="v-dyn" class="view"></section>
+    <section id="v-rehber" class="view"></section>
+    <section id="v-exec" class="view"></section>
+  </main>
+</div>
+
+<!-- Mobil alt menü -->
+<nav id="bottomNav" class="md:hidden fixed bottom-0 inset-x-0 z-40 flex" style="background:rgba(23,32,51,.97);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);backdrop-filter:blur(8px)"></nav>
+
+<!-- Bildirim kutuları -->
+<div id="toasts" class="fixed z-50 right-3 left-3 sm:left-auto sm:w-96 flex flex-col gap-2" style="top:70px;pointer-events:none"></div>
+
+<!-- Sürükle bırak katmanı -->
+<div id="dropOv" class="hidden fixed inset-0 z-50 flex items-center justify-center text-xl hi" style="background:rgba(15,23,42,.85);border:3px dashed var(--acc)">Excel dosyasını bırakın…</div>
+
+<!-- Veri modalı -->
+<div id="modal" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style="background:rgba(2,6,23,.7)" onclick="if(event.target===this)closeModal()">
+  <div class="card w-full sm:max-w-xl max-h-[92vh] overflow-auto p-5" style="border-radius:20px 20px 0 0">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="hi font-semibold text-lg">Veri Kaynağı</h2>
+      <button class="btn" onclick="closeModal()">✕</button>
+    </div>
+    <div class="flex gap-2 mb-4">
+      <button id="mt-xl" class="chip act" onclick="modalTab('xl')">Excel Yükle</button>
+      <button id="mt-api" class="chip" onclick="modalTab('api')">REST API</button>
+    </div>
+    <div id="mp-xl">
+      <div id="dz" class="dz" onclick="$('#fileIn').click()">
+        <div class="text-3xl mb-1">📄</div>
+        <div class="hi">Excel dosyasını sürükleyip bırakın</div>
+        <div class="text-xs mut mt-1">veya dokunup seçin (.xlsx, .xls, .csv)</div>
+        <input id="fileIn" type="file" accept=".xlsx,.xls,.csv" class="hidden">
+      </div>
+      <div class="flex flex-wrap gap-2 mt-3">
+        <button class="btn" onclick="downloadTemplate()">⬇ Örnek şablon indir</button>
+        <button class="btn" onclick="loadDemo(true)">Demo veriyi yükle</button>
+      </div>
+      <p class="text-xs dim mt-3">“Siparişler” ve “Personel” dışındaki her sayfa otomatik olarak yeni bir dinamik sayfa olur.</p>
+    </div>
+    <div id="mp-api" class="hidden">
+      <label class="text-xs mut">API URL (GET, JSON)</label>
+      <input id="apiUrl" class="inp mb-3" placeholder="https://sirket.com/api/depo" inputmode="url">
+      <label class="text-xs mut">Authorization başlığı (opsiyonel)</label>
+      <input id="apiAuth" class="inp mb-3" placeholder="Bearer xxxxx">
+      <label class="text-xs mut">Otomatik yenileme</label>
+      <select id="apiInt" class="inp mb-3">
+        <option value="0">Kapalı (tek sefer)</option><option value="15">15 sn</option><option value="30" selected>30 sn</option><option value="60">60 sn</option><option value="300">5 dk</option>
+      </select>
+      <div class="flex gap-2"><button class="btn p" onclick="connectApi()">Bağlan</button><button class="btn" onclick="stopApi()">Bağlantıyı kes</button></div>
+      <div id="apiStat" class="text-xs mut mt-3"></div>
+      <p class="text-xs dim mt-3">Beklenen JSON biçimi için “Sistem Rehberi” sekmesine bakın. CORS izni gerekir.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================== YARDIMCILAR ============================== */
+const $=s=>document.querySelector(s);
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=(n,d=0)=>(n==null||!isFinite(n))?'—':n.toLocaleString('tr-TR',{minimumFractionDigits:d,maximumFractionDigits:d});
+const norm=s=>String(s??'').toLocaleLowerCase('tr').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/ı/g,'i').replace(/[^a-z0-9]+/g,' ').trim();
+const clock=h=>isFinite(h)?new Date(Date.now()+h*3600e3).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'}):'—';
+function num(v){
+  if(typeof v==='number')return v;
+  let s=String(v??'').trim().replace(/\s/g,'');
+  if(!s)return NaN;
+  if(s.includes('.')&&s.includes(','))s=s.replace(/\./g,'').replace(',','.');
+  else if(s.includes(','))s=s.replace(',','.');
+  else if(/^\d{1,3}(\.\d{3})+$/.test(s))s=s.replace(/\./g,'');
+  return parseFloat(s);
+}
+
+/* ============================== DURUM ============================== */
+const OPS={
+  export:{name:'İhracat',en:'Export',uph:50000,sph:15,note:'Düşük SKU çeşitliliği, çok yüksek adet/koli hacmi',col:'var(--acc)'},
+  domestic:{name:'İç Piyasa',en:'Domestic',uph:25000,sph:20,note:'Yüksek SKU çeşitliliği, orta/parça adet hacmi',col:'var(--acc2)'}
+};
+const W_UPH=.6,W_SKU=.4;
+const state={shift:{total:8,remaining:5},staff:{export:3,domestic:2},orders:[],dyn:{},source:'—',updated:null,sim:null};
+const ui={view:'ozet',exec:false,dynSel:null,opF:'all',stF:'pending',limit:50,dq:'',dsort:{i:null,dir:1},dlimit:100,sound:true,alertDismissed:null};
+let charts={},calcs={},lastBottleneck='',lastLow='',pollT=null,audioCtx=null;
+
+/* ============================== HESAPLAMA ============================== */
+function calcOp(k){
+  const o=OPS[k],L=state.orders.filter(r=>r.op===k);
+  let pu=0,pl=0,du=0,dl=0;
+  for(const r of L){if(r.done){du+=r.qty;dl++}else{pu+=r.qty;pl++}}
+  const rem=state.shift.remaining,el=Math.max(0,state.shift.total-rem),st=state.staff[k];
+  const req=pu>0?(rem>0?pu/(o.uph*rem):Infinity):0;               // Gereken FTE
+  const need=pu>0?(st>0?pu/(st*o.uph):Infinity):0;                 // Mevcut kadroyla biteceği süre (saat)
+  const uphA=(el>0&&st>0&&du>0)?du/(el*st):null, sphA=(el>0&&st>0&&dl>0)?dl/(el*st):null;
+  const uphP=uphA==null?null:uphA/o.uph*100, sphP=sphA==null?null:sphA/o.sph*100;
+  const comp=(uphP==null||sphP==null)?null:W_UPH*uphP+W_SKU*sphP;    // Bileşik verimlilik
+  const ratio=pu===0?0:(st>0?req/st:Infinity);
+  const fteS=ratio<=1?'g':ratio<=1.1?'y':'r';
+  return {k,o,pu,pl,du,dl,rem,el,st,req,need,over:need-rem,uphA,sphA,uphP,sphP,comp,fteS,compS:perfS(comp),gap:req-st};
+}
+function perfS(v){return v==null?'n':v>=95?'g':v>=80?'y':'r'}
+function calcAll(){calcs={export:calcOp('export'),domestic:calcOp('domestic')};return calcs}
+function totals(){
+  const a=calcs.export,b=calcs.domestic,cs=[a.comp,b.comp].filter(v=>v!=null);
+  const rank={g:0,n:0,y:1,r:2};
+  return {
+    pu:a.pu+b.pu, pl:a.pl+b.pl, req:a.req+b.req, st:a.st+b.st,
+    comp:cs.length?cs.reduce((x,y)=>x+y,0)/cs.length:null,
+    need:Math.max(a.need,b.need), over:Math.max(a.over,b.over),
+    fteS:rank[a.fteS]>=rank[b.fteS]?a.fteS:b.fteS,
+    finS:(()=>{const o=Math.max(a.pu?a.over:-9,b.pu?b.over:-9),r=state.shift.remaining||1;return o<=0?'g':o<=r*.1?'y':'r'})()
+  };
+}
+
+/* ============================== SES & BİLDİRİM ============================== */
+function ctx(){
+  try{
+    if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+    if(audioCtx.state==='suspended')audioCtx.resume();
+    return audioCtx.state==='running'?audioCtx:null;
+  }catch(e){return null}
+}
+function tone(f,t0,d,type='sine',v=.12){
+  const c=ctx();if(!c)return;
+  const o=c.createOscillator(),g=c.createGain(),t=c.currentTime+t0;
+  o.type=type;o.frequency.value=f;o.connect(g);g.connect(c.destination);
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v,t+.02);g.gain.exponentialRampToValueAtTime(.0001,t+d);
+  o.start(t);o.stop(t+d+.05);
+}
+function beep(kind){
+  if(!ui.sound)return;
+  if(kind==='order'){tone(660,0,.25);tone(880,.16,.35)}
+  else if(kind==='warn'){tone(520,0,.3,'triangle');tone(520,.35,.3,'triangle')}
+  else if(kind==='alarm'){for(let i=0;i<3;i++){tone(880,i*.5,.22,'square',.09);tone(620,i*.5+.24,.22,'square',.09)}}
+}
+function toggleSound(){ui.sound=!ui.sound;$('#btnSound').classList.toggle('on',ui.sound);$('#btnSound').textContent=ui.sound?'🔊':'🔇';if(ui.sound){ctx();beep('order')}saveCfg()}
+function notifState(){return 'Notification' in window?Notification.permission:'unsupported'}
+function updNotifBtn(){
+  const s=notifState(),b=$('#btnNotif');
+  b.classList.toggle('on',s==='granted');
+  $('#notifLbl').textContent=s==='granted'?'Bildirim açık':s==='denied'?'Engelli':'Bildirim';
+}
+async function askNotif(){
+  if(!('Notification' in window)){toast('Bu tarayıcı bildirimleri desteklemiyor.','warn');return}
+  if(Notification.permission==='denied'){toast('Bildirimler tarayıcı ayarlarından engellenmiş.','warn');return}
+  const p=await Notification.requestPermission();updNotifBtn();ctx();
+  if(p==='granted'){toast('Bildirimler açıldı.','ok');pushNotif('Depo Dashboard','Bildirimler etkin.')}
+}
+function pushNotif(title,body){
+  if(notifState()!=='granted')return;
+  try{new Notification(title,{body,tag:'depo-'+title,icon:'data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#0F172A"/><text x="32" y="44" font-size="34" text-anchor="middle" fill="#7AA2F7" font-family="sans-serif">D</text></svg>')})}
+  catch(e){
+    try{navigator.serviceWorker&&navigator.serviceWorker.ready.then(r=>r.showNotification(title,{body}))}catch(_){}
+  }
+}
+function toast(msg,type='',ms=6000){
+  const d=document.createElement('div');d.className='toast '+type;d.style.pointerEvents='auto';d.textContent=msg;
+  d.onclick=()=>d.remove();$('#toasts').appendChild(d);setTimeout(()=>d.remove(),ms);
+}
+function announce(title,body,kind,type){toast(title+' — '+body,type);pushNotif(title,body);beep(kind)}
+
+/* ============================== KRİTİK İKAZLAR ============================== */
+function evaluate(announceIt){
+  calcAll();
+  const reds=Object.values(calcs).filter(c=>c.fteS==='r'&&c.pu>0);
+  const key=reds.map(c=>c.k).join('+');
+  const bar=$('#alertBar');
+  if(reds.length){
+    const txt=reds.map(c=>`${c.o.name}: ${fmt(c.req,1)} FTE gerekli / ${fmt(c.st,1)} mevcut (${isFinite(c.over)?'+'+fmt(c.over,1)+' sa sarkma':'kadro yok'})`).join(' • ');
+    if(ui.alertDismissed!==key){
+      bar.innerHTML=`<div class="flex items-center gap-3 px-4 py-2 text-sm"><span>🚨</span><div class="flex-1"><b>KRİTİK DARBOĞAZ</b> — vardiya sonuna sarkacak iş yükü. ${esc(txt)}</div><button class="btn" style="min-height:32px;padding:2px 10px;background:#0006" onclick="dismissAlert()">Kapat</button></div>`;
+      bar.classList.remove('hidden');
+    }
+  }else bar.classList.add('hidden');
+  if(key!==lastBottleneck){
+    if(key&&announceIt){announce('🚨 Kritik Darboğaz',reds.map(c=>c.o.name+' +'+fmt(c.gap,1)+' FTE açık').join(', '),'alarm','err')}
+    if(key!==ui.alertDismissed)ui.alertDismissed=null;
+    lastBottleneck=key;
+  }
+  const lows=Object.values(calcs).filter(c=>c.compS==='r').map(c=>c.k).join('+');
+  if(lows!==lastLow){
+    if(lows&&announceIt)announce('⚠ Hedef UPH altında',Object.values(calcs).filter(c=>c.compS==='r').map(c=>`${c.o.name} verimlilik %${fmt(c.comp)}`).join(', '),'warn','warn');
+    lastLow=lows;
+  }
+}
+function dismissAlert(){ui.alertDismissed=lastBottleneck;$('#alertBar').classList.add('hidden')}
+
+/* ============================== VERİ İÇE AKTARMA ============================== */
+function opFrom(v){
+  const n=norm(v);
+  if(/ihrac|export|yurt ?disi/.test(n))return 'export';
+  if(/ic piyasa|domestic|yurt ?ici|ic pazar|^ic$/.test(n))return 'domestic';
+  return null;
+}
+const A={op:['operasyon','operation','tip','tur','operasyon tipi','kanal'],no:['siparis no','siparis','order no','order','order id','siparis numarasi'],
+  sku:['sku','urun kodu','urun','stok kodu','kod'],qty:['adet','qty','quantity','miktar'],st:['durum','status','asama']};
+function pick(row,keys){for(const k in row){if(keys.includes(norm(k)))return row[k]}return undefined}
+function parseOrders(rows){
+  const out=[];
+  rows.forEach((r,i)=>{
+    const op=opFrom(pick(r,A.op)),qty=num(pick(r,A.qty));
+    if(!op||!isFinite(qty)||qty<=0)return;
+    const st=norm(pick(r,A.st)||'');
+    out.push({op,orderNo:String(pick(r,A.no)??('SATIR-'+(i+1))),sku:String(pick(r,A.sku)??''),qty,status:pick(r,A.st)||'Bekliyor',
+      done:/tamam|done|complete|sevk|hazir|bitti|kapali/.test(st)});
+  });
+  return out;
+}
+function looksOrders(rows){
+  const r=rows[0];if(!r)return false;
+  const ks=Object.keys(r).map(norm);
+  return ks.some(k=>A.op.includes(k))&&ks.some(k=>A.qty.includes(k))&&ks.some(k=>A.sku.includes(k));
+}
+function parseStaff(x){
+  const out={};
+  if(Array.isArray(x)){x.forEach(r=>{const op=opFrom(pick(r,A.op)),v=num(pick(r,['personel','personel sayisi','kadro','fte','staff','sayi','adet']));if(op&&isFinite(v))out[op]=v})}
+  else if(x&&typeof x==='object'){for(const k in x){const op=opFrom(k),v=num(x[k]);if(op&&isFinite(v))out[op]=v}}
+  return out;
+}
+function ingest(sheets,src,mode='file',staffObj=null,shift=null){
+  let orders=null,staff=staffObj?parseStaff(staffObj):null;const found=[];
+  for(const [name,rows] of Object.entries(sheets)){
+    if(!Array.isArray(rows))continue;
+    const n=norm(name);
+    if(/siparis|order/.test(n)||(!/personel|kadro|staff/.test(n)&&looksOrders(rows))){orders=(orders||[]).concat(parseOrders(rows))}
+    else if(/^(personel|kadro|staff)/.test(n)){staff=Object.assign(staff||{},parseStaff(rows))}
+    else if(rows.length&&typeof rows[0]==='object'){
+      const cols=Object.keys(rows[0]);
+      if(!state.dyn[name])found.push(name);
+      state.dyn[name]={rows,cols,at:new Date()};
+    }
+  }
+  const prev=new Set(state.orders.map(o=>o.orderNo));
+  let newOrders=[];
+  if(orders){newOrders=orders.filter(o=>!prev.has(o.orderNo));state.orders=orders}
+  if(staff)Object.assign(state.staff,staff);
+  if(shift){if(isFinite(+shift.total)&&+shift.total>0)state.shift.total=+shift.total;if(isFinite(+shift.remaining)&&+shift.remaining>=0)state.shift.remaining=+shift.remaining}
+  state.source=src;state.updated=new Date();state.sim=null;
+  if(!orders&&!found.length&&!staff&&!shift){toast('Dosyada tanınan veri bulunamadı (Siparişler sayfası / Operasyon-SKU-Adet sütunları).','warn');return}
+  if(found.length&&!ui.dynSel)ui.dynSel=found[0];
+  evaluate(mode!=='boot');renderAll();
+  if(mode==='boot'){closeModal();return}
+  if(orders){
+    if(mode==='file'){
+      const pend=orders.filter(o=>!o.done),uniq=new Set(orders.map(o=>o.orderNo)).size;
+      announce('📦 Yeni veri yüklendi',`${fmt(orders.length)} satır / ${fmt(uniq)} sipariş, bekleyen ${fmt(pend.reduce((s,o)=>s+o.qty,0))} adet`,'order','ok');
+    }else if(newOrders.length){
+      const un=new Set(newOrders.map(o=>o.orderNo)).size;
+      announce('📦 Yeni sipariş akışı',`${fmt(un)} yeni sipariş, ${fmt(newOrders.reduce((s,o)=>s+o.qty,0))} adet`,'order','ok');
+    }
+  }
+  found.forEach(n=>announce('🧩 Yeni dinamik sayfa',`“${n}” otomatik oluşturuldu (${fmt(state.dyn[n].rows.length)} kayıt)`,'order','ok'));
+  closeModal();
+}
+async function handleFile(f){
+  if(!f)return;
+  if(!window.XLSX){toast('SheetJS kütüphanesi yüklenemedi (internet bağlantısı?).','err');return}
+  try{
+    const wb=XLSX.read(await f.arrayBuffer(),{type:'array'}),sheets={};
+    wb.SheetNames.forEach(n=>sheets[n]=XLSX.utils.sheet_to_json(wb.Sheets[n],{defval:''}));
+    ingest(sheets,'Excel: '+f.name,'file');
+  }catch(e){toast('Excel okunamadı: '+e.message,'err')}
+}
+/* API */
+let apiCfg=null;
+async function pullApi(mode){
+  const st=$('#apiStat');
+  try{
+    const h={Accept:'application/json'};if(apiCfg.auth)h.Authorization=apiCfg.auth;
+    const res=await fetch(apiCfg.url,{headers:h});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const j=await res.json(),sheets={};let staff=null,shift=null;
+    if(Array.isArray(j))sheets.orders=j;
+    else for(const k in j){
+      const v=j[k],n=norm(k);
+      if(k==='shift')shift=v;
+      else if(/^(staff|personel|kadro)/.test(n)&&!Array.isArray(v))staff=v;
+      else if(k==='sheets'&&v&&typeof v==='object')Object.assign(sheets,v);
+      else if(Array.isArray(v))sheets[k]=v;
+    }
+    ingest(sheets,'API: '+apiCfg.url.replace(/^https?:\/\//,'').slice(0,40),mode,staff,shift);
+    st.textContent='Son güncelleme: '+new Date().toLocaleTimeString('tr-TR');st.className='text-xs g mt-3';
+    return true;
+  }catch(e){st.textContent='Bağlantı hatası: '+e.message;st.className='text-xs r mt-3';toast('API hatası: '+e.message,'err');return false}
+}
+async function connectApi(){
+  const url=$('#apiUrl').value.trim();if(!/^https?:\/\//.test(url)){toast('Geçerli bir http(s) URL girin.','warn');return}
+  ctx();stopApi(true);
+  apiCfg={url,auth:$('#apiAuth').value.trim(),int:+$('#apiInt').value};
+  const ok=await pullApi('file');
+  if(ok&&apiCfg.int>0)pollT=setInterval(()=>pullApi('poll'),apiCfg.int*1000);
+}
+function stopApi(silent){if(pollT){clearInterval(pollT);pollT=null}if(!silent){apiCfg=null;$('#apiStat').textContent='Bağlantı kesildi.';$('#apiStat').className='text-xs mut mt-3'}}
+
+/* Demo & şablon */
+function loadDemo(fromBtn,boot){
+  let s=20240517;const r=()=>(s=(s*16807)%2147483647)/2147483647;
+  const rows=[];
+  const gen=(op,pre,pool,done,pend,lo,hi,per)=>{
+    for(let i=0;i<done+pend;i++){
+      rows.push({Operasyon:OPS[op].name,'Sipariş No':pre+(5000+Math.floor(i/per)),SKU:pre+'-'+String(1+Math.floor(r()*pool)).padStart(3,'0'),
+        Adet:Math.round(lo+r()*(hi-lo)),Durum:i<done?'Tamamlandı':'Bekliyor'});
+    }
+  };
+  gen('export','EXP',14,125,150,2000,4500,25);
+  gen('domestic','DOM',180,94,240,500,2100,5);
+  const iade=[],neden=['Hasarlı','Yanlış ürün','Müşteri vazgeçti','Geç teslim'];
+  for(let i=1;i<=40;i++)iade.push({'İade No':'IAD-'+(700+i),Ürün:'DOM-'+String(1+Math.floor(r()*180)).padStart(3,'0'),Adet:1+Math.floor(r()*30),Neden:neden[Math.floor(r()*4)],Durum:r()>.5?'Depoda':'Yolda','Tutar (TL)':Math.round(200+r()*4800)});
+  const kargo=[],firm=['Aras','Yurtiçi','MNG','Sürat'];
+  for(let i=1;i<=50;i++)kargo.push({Kargo:firm[Math.floor(r()*4)],'Takip No':'TK'+(900000+i*37),Desi:Math.round((1+r()*40)*10)/10,Koli:1+Math.floor(r()*6),'Ücret (TL)':Math.round(60+r()*900)});
+  state.dyn={};ui.dynSel=null;
+  ingest({'Siparişler':rows,'Personel':[{Operasyon:'İhracat','Personel (FTE)':3},{Operasyon:'İç Piyasa','Personel (FTE)':2}],'İade Takibi':iade,'Kargo Desi Logları':kargo},'Demo veri',boot?'boot':'demo');
+  if(fromBtn)closeModal();
+}
+function downloadTemplate(){
+  if(!window.XLSX){toast('SheetJS yüklenemedi.','err');return}
+  const wb=XLSX.utils.book_new();
+  const o=[['Operasyon','Sipariş No','SKU','Adet','Durum'],['İhracat','EXP-5001','EXP-001',3200,'Tamamlandı'],['İhracat','EXP-5002','EXP-004',4100,'Bekliyor'],['İç Piyasa','DOM-5001','DOM-021',850,'Tamamlandı'],['İç Piyasa','DOM-5001','DOM-097',1200,'Bekliyor']];
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(o),'Siparişler');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['Operasyon','Personel (FTE)'],['İhracat',3],['İç Piyasa',2]]),'Personel');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['İade No','Ürün','Adet','Neden','Tutar (TL)'],['IAD-1','DOM-021',3,'Hasarlı',450],['IAD-2','DOM-097',1,'Yanlış ürün',120]]),'İade Takibi');
+  XLSX.writeFile(wb,'depo_sablon.xlsx');
+}
+
+/* ============================== GÖRÜNÜM YARDIMCILARI ============================== */
+const IC={
+  ozet:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>',
+  perf:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h18"/><path d="M6 16v-5M11 16V6M16 16v-8M21 16v-3"/></svg>',
+  dyn:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg>',
+  rehber:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 012-2h13v16H6a2 2 0 00-2 2V5z"/><path d="M8 7h7M8 11h5"/></svg>'
+};
+const NAV=[['ozet','Özet'],['perf','Performans'],['dyn','Dinamik Sayfalar'],['rehber','Sistem Rehberi']];
+const BNAV_LBL={ozet:'Özet',perf:'Performans',dyn:'Dinamik',rehber:'Rehber'};
+function go(v,dyn){
+  ui.exec=false;ui.view=v;if(dyn){ui.dynSel=dyn;ui.dq='';ui.dsort={i:null,dir:1};ui.dlimit=100}
+  saveCfg();showView();renderNav();if(v==='dyn')renderDyn();if(v==='perf')drawCharts();window.scrollTo({top:0})
+}
+function toggleExec(){ui.exec=!ui.exec;saveCfg();showView();renderNav();if(!ui.exec&&ui.view==='perf')drawCharts()}
+function showView(){
+  document.querySelectorAll('.view').forEach(e=>e.classList.remove('show'));
+  $('#v-'+(ui.exec?'exec':ui.view)).classList.add('show');
+  $('#swExec').classList.toggle('on',ui.exec);
+}
+function renderNav(){
+  const act=ui.exec?'':ui.view;
+  $('#bottomNav').innerHTML=NAV.map(([k])=>`<button class="navb ${act===k?'act':''}" onclick="go('${k}')">${IC[k]}<span>${BNAV_LBL[k]}</span></button>`).join('');
+  $('#sideMain').innerHTML=NAV.map(([k,l])=>`<button class="side ${act===k&&!(k==='dyn')?'act':''}" onclick="go('${k}')">${IC[k]}<span>${l}</span></button>`).join('');
+  const names=Object.keys(state.dyn);
+  $('#sideDynT').classList.toggle('hidden',!names.length);
+  $('#sideDyn').innerHTML=names.map(n=>`<button class="side ${act==='dyn'&&ui.dynSel===n?'act':''}" onclick="go('dyn',this.dataset.n)" data-n="${esc(n)}"><span>▸</span><span class="truncate">${esc(n)}</span></button>`).join('');
+}
+function kpiCard(lbl,val,sub,s){return `<div class="kpi bg-${s}"><div class="lbl">${lbl}</div><div class="val ${s}">${val}</div><div class="sub">${sub}</div></div>`}
+function kpis(){
+  const t=totals(),a=calcs.export,b=calcs.domestic;
+  const gap=t.req-t.st;
+  return [
+    kpiCard('Bekleyen İş',fmt(t.pu)+' <span class="text-base mut">adet</span>',`${fmt(t.pl)} kalem · İhracat ${fmt(a.pu)} · İç Piyasa ${fmt(b.pu)}`,t.pu?'n':'g'),
+    kpiCard('Gereken FTE',fmt(t.req,1)+' <span class="text-base mut">/ '+fmt(t.st,1)+'</span>',[a,b].map(c=>`${c.o.name} ${c.gap>0?'<span class="r">+'+fmt(c.gap,1)+' açık</span>':fmt(-c.gap,1)+' fazla'}`).join(' · ')+' · kalan '+fmt(state.shift.remaining,1)+' sa',t.fteS),
+    kpiCard('Bileşik Verimlilik',t.comp==null?'—':'%'+fmt(t.comp),`İhracat ${a.comp==null?'—':'%'+fmt(a.comp)} · İç Piyasa ${b.comp==null?'—':'%'+fmt(b.comp)}`,perfS(t.comp)),
+    kpiCard('Tahmini Bitiş',isFinite(t.need)?clock(t.need):'—',isFinite(t.over)?(t.over>0?`<span class="r">+${fmt(t.over,1)} sa sarkma</span>`:`${fmt(-t.over,1)} sa pay`)+' · vardiya sonu '+clock(state.shift.remaining):'Kadro atanmamış',t.finS)
+  ].join('');
+}
+function bar(pct,s){const p=Math.max(0,Math.min(pct??0,150));return `<div class="bar"><i class="fill-${s}" style="width:${p/1.5}%"></i><b style="left:${100/1.5}%"></b></div>`}
+
+/* ============================== ÖZET ============================== */
+function opCard(c){
+  const rem=state.shift.remaining;
+  return `<div class="card p-4">
+    <div class="flex items-center justify-between mb-1"><div class="hi font-semibold" style="color:${c.o.col}">${c.o.name}</div>
+      <span class="chip ${c.fteS==='r'?'':''}" style="cursor:default"><span class="${c.fteS}">●</span> ${c.fteS==='g'?'Kapasite yeterli':c.fteS==='y'?'Sarkma riski':'Darboğaz'}</span></div>
+    <div class="text-xs dim mb-3">${c.o.note} · Hedef ${fmt(c.o.uph)} UPH / ${c.o.sph} SPH</div>
+    <div class="grid grid-cols-2 gap-3 text-sm">
+      <div><div class="dim text-xs">Bekleyen</div><div class="hi text-lg font-semibold">${fmt(c.pu)}</div><div class="text-xs mut">${fmt(c.pl)} kalem</div></div>
+      <div><div class="dim text-xs">Gereken / Mevcut FTE</div><div class="text-lg font-semibold ${c.fteS}">${fmt(c.req,2)} / ${fmt(c.st,1)}</div><div class="text-xs mut">${fmt(c.req*rem,1)} adam-saat</div></div>
+      <div><div class="dim text-xs">Bitiş (mevcut kadro)</div><div class="hi text-lg font-semibold">${isFinite(c.need)?clock(c.need):'—'}</div><div class="text-xs ${c.over>0?'r':'mut'}">${isFinite(c.over)?(c.over>0?'+'+fmt(c.over,1)+' sa sarkma':fmt(-c.over,1)+' sa pay'):'—'}</div></div>
+      <div><div class="dim text-xs">Bileşik verimlilik</div><div class="text-lg font-semibold ${c.compS}">${c.comp==null?'—':'%'+fmt(c.comp)}</div><div class="text-xs mut">UPH %${c.uphP==null?'—':fmt(c.uphP)} · SPH %${c.sphP==null?'—':fmt(c.sphP)}</div></div>
+    </div></div>`;
+}
+function renderOzet(){
+  const sh=state.shift,st=state.staff;
+  $('#v-ozet').innerHTML=`
+  <div class="card p-4 mb-4">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div><label class="text-xs mut">Vardiya süresi (sa)</label><input class="inp" type="number" step="0.5" min="1" value="${sh.total}" onchange="setCfg('total',this.value)"></div>
+      <div><label class="text-xs mut">Kalan vardiya (sa)</label><input class="inp" type="number" step="0.25" min="0" value="${sh.remaining}" onchange="setCfg('remaining',this.value)"></div>
+      <div><label class="text-xs mut">İhracat kadro (FTE)</label><input class="inp" type="number" step="0.5" min="0" value="${st.export}" onchange="setCfg('export',this.value)"></div>
+      <div><label class="text-xs mut">İç Piyasa kadro (FTE)</label><input class="inp" type="number" step="0.5" min="0" value="${st.domestic}" onchange="setCfg('domestic',this.value)"></div>
+    </div>
+  </div>
+  <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 mb-4">${kpis()}</div>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-4">${opCard(calcs.export)}${opCard(calcs.domestic)}</div>
+  <div class="card p-4">
+    <div class="flex items-center justify-between flex-wrap gap-2 mb-1"><h3 class="hi font-semibold">What-If Kadro Kaydırma Simülatörü</h3></div>
+    <p class="text-xs dim mb-3">Toplam kadro havuzunu İhracat ↔ İç Piyasa arasında kaydırın; bitiş saatleri anlık yeniden hesaplanır.</p>
+    <div id="simIn"></div><div id="simOut" class="mt-3"></div>
+  </div>`;
+  renderSim();
+}
+function setCfg(k,v){
+  v=parseFloat(String(v).replace(',','.'));if(!isFinite(v)||v<0)return;
+  if(k==='total')state.shift.total=Math.max(v,.5);else if(k==='remaining')state.shift.remaining=v;else state.staff[k]=v;
+  state.sim=null;saveCfg();evaluate(true);renderAll();
+}
+function renderSim(){
+  const a=calcs.export,b=calcs.domestic,pool=a.st+b.st;
+  const x=state.sim??a.st;
+  $('#simIn').innerHTML=pool<=0?'<div class="mut text-sm">Önce kadro (FTE) girin.</div>':`
+    <div class="flex justify-between text-sm mb-1"><span style="color:var(--acc)">İhracat: <b id="sx">${fmt(x,1)}</b> FTE</span><span style="color:var(--acc2)">İç Piyasa: <b id="sy">${fmt(pool-x,1)}</b> FTE</span></div>
+    <input type="range" min="0" max="${pool}" step="0.5" value="${x}" oninput="state.sim=+this.value;simOut()">
+    <div class="flex flex-wrap gap-2 mt-2"><button class="btn" onclick="simOpt()">✨ Optimum dağılımı öner</button><button class="btn" onclick="simReset()">Sıfırla</button><button class="btn p" onclick="simApply()">Bu dağılımı uygula</button></div>`;
+  simOut();
+}
+function simCalc(fteE,fteD){
+  const rem=state.shift.remaining;
+  return [[calcs.export,fteE],[calcs.domestic,fteD]].map(([c,f])=>{
+    const need=c.pu>0?(f>0?c.pu/(f*c.o.uph):Infinity):0,over=need-rem;
+    const s=c.pu===0||over<=0?'g':over<=rem*.1?'y':'r';
+    return {c,f,need,over,s};
+  });
+}
+function simOut(){
+  const a=calcs.export,b=calcs.domestic,pool=a.st+b.st;if(pool<=0||!$('#simOut'))return;
+  const x=Math.min(state.sim??a.st,pool);
+  $('#sx').textContent=fmt(x,1);$('#sy').textContent=fmt(pool-x,1);
+  const cur=simCalc(a.st,b.st),sim=simCalc(x,pool-x);
+  $('#simOut').innerHTML=`<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">`+sim.map((r,i)=>`
+    <div class="kpi bg-${r.s}" style="min-height:0"><div class="lbl">${r.c.o.name} · ${fmt(r.f,1)} FTE</div>
+      <div class="val ${r.s}" style="font-size:1.6rem">${isFinite(r.need)?clock(r.need):'—'}</div>
+      <div class="sub">${r.c.pu?(isFinite(r.over)?(r.over>0?`<span class="r">+${fmt(r.over,1)} sa sarkma</span>`:`${fmt(-r.over,1)} sa pay`):'kadro yok'):'bekleyen iş yok'} · şu an ${isFinite(cur[i].need)?clock(cur[i].need):'—'}</div></div>`).join('')+`</div>`;
+}
+function simOpt(){
+  const a=calcs.export,b=calcs.domestic,pool=a.st+b.st,t=a.req+b.req;
+  if(!t||!isFinite(t))return;
+  state.sim=Math.min(pool,Math.max(0,Math.round(pool*a.req/t*2)/2));renderSim();
+}
+function simReset(){state.sim=null;renderSim()}
+function simApply(){
+  const a=calcs.export,b=calcs.domestic,pool=a.st+b.st,x=state.sim??a.st;
+  state.staff.export=x;state.staff.domestic=pool-x;state.sim=null;evaluate(true);renderAll();toast('Kadro dağılımı uygulandı.','ok');
+}
+
+/* ============================== PERFORMANS ============================== */
+function gauge(lbl,act,tgt,p,unit){
+  const s=perfS(p);
+  return `<div class="mb-3"><div class="flex justify-between text-sm mb-1"><span class="mut">${lbl}</span><span><b class="hi">${act==null?'—':fmt(act,1)}</b> <span class="dim">/ ${fmt(tgt)} ${unit}</span> <b class="${s}">${p==null?'':'%'+fmt(p)}</b></span></div>${bar(p,s)}</div>`;
+}
+function perfCard(c){
+  return `<div class="card p-4">
+    <div class="flex items-center justify-between mb-3"><div class="font-semibold" style="color:${c.o.col}">${c.o.name} <span class="dim text-xs font-normal">(${c.o.en})</span></div>
+      <div class="text-right"><div class="text-[11px] dim uppercase">Bileşik</div><div class="text-2xl font-bold ${c.compS}">${c.comp==null?'—':'%'+fmt(c.comp)}</div></div></div>
+    ${gauge('UPH (adet/saat/FTE)',c.uphA,c.o.uph,c.uphP,'adet')}
+    ${gauge('SPH (SKU kalemi/saat/FTE)',c.sphA,c.o.sph,c.sphP,'SKU')}
+    <div class="text-xs dim mt-1">Tamamlanan ${fmt(c.du)} adet / ${fmt(c.dl)} kalem · geçen ${fmt(c.el,1)} sa · ${fmt(c.st,1)} FTE · verimlilik = %60 UPH + %40 SPH</div>
+  </div>`;
+}
+function renderPerf(){
+  $('#v-perf').innerHTML=`
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-4">${perfCard(calcs.export)}${perfCard(calcs.domestic)}</div>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-4">
+    <div class="card p-4"><div class="hi font-semibold mb-2 text-sm">Hedefe Göre Performans (%)</div><div style="height:230px"><canvas id="chPerf"></canvas></div></div>
+    <div class="card p-4"><div class="hi font-semibold mb-2 text-sm">Gereken vs Mevcut FTE</div><div style="height:230px"><canvas id="chFte"></canvas></div></div>
+  </div>
+  <div class="card p-4">
+    <div class="flex flex-wrap items-center gap-2 mb-3"><h3 class="hi font-semibold mr-auto">Sipariş Kalemleri</h3>
+      ${[['all','Tümü'],['export','İhracat'],['domestic','İç Piyasa']].map(([k,l])=>`<span class="chip ${ui.opF===k?'act':''}" onclick="ui.opF='${k}';ui.limit=50;renderPerf();drawCharts()">${l}</span>`).join('')}
+      <span class="dim">|</span>
+      ${[['pending','Bekleyen'],['done','Tamamlanan'],['all','Hepsi']].map(([k,l])=>`<span class="chip ${ui.stF===k?'act':''}" onclick="ui.stF='${k}';ui.limit=50;renderPerf();drawCharts()">${l}</span>`).join('')}
+    </div>${ordersGrid()}</div>`;
+}
+function ordersGrid(){
+  const L=state.orders.filter(o=>(ui.opF==='all'||o.op===ui.opF)&&(ui.stF==='all'||(ui.stF==='done')===o.done));
+  if(!L.length)return '<div class="mut text-sm py-6 text-center">Gösterilecek kayıt yok.</div>';
+  return `<div class="scroll"><table class="rt"><thead><tr><th>Operasyon</th><th>Sipariş No</th><th>SKU</th><th style="text-align:right">Adet</th><th>Durum</th></tr></thead><tbody>`+
+    L.slice(0,ui.limit).map(o=>`<tr><td data-l="Operasyon" style="color:${OPS[o.op].col}">${OPS[o.op].name}</td><td data-l="Sipariş No">${esc(o.orderNo)}</td><td data-l="SKU">${esc(o.sku)}</td><td data-l="Adet" style="text-align:right">${fmt(o.qty)}</td><td data-l="Durum"><span class="${o.done?'g':'y'}">${o.done?'Tamamlandı':'Bekliyor'}</span></td></tr>`).join('')+
+    `</tbody></table></div><div class="flex items-center justify-between mt-3 text-xs mut"><span>${fmt(Math.min(ui.limit,L.length))} / ${fmt(L.length)} kayıt</span>${L.length>ui.limit?`<button class="btn" onclick="ui.limit+=100;renderPerf();drawCharts()">Daha fazla göster</button>`:''}</div>`;
+}
+function drawCharts(){
+  Object.values(charts).forEach(c=>c.destroy());charts={};
+  if(!window.Chart||!$('#chPerf')||!$('#v-perf').classList.contains('show'))return;
+  Chart.defaults.color='#94a3b8';Chart.defaults.borderColor='#334155';
+  const a=calcs.export,b=calcs.domestic,r=v=>v==null?0:Math.round(v);
+  const opt=(max)=>({responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true,suggestedMax:max}}});
+  charts.p=new Chart($('#chPerf'),{type:'bar',data:{labels:['UPH %','SPH %','Bileşik %'],datasets:[
+    {label:'İhracat',data:[r(a.uphP),r(a.sphP),r(a.comp)],backgroundColor:'#7AA2F7cc',borderRadius:6},
+    {label:'İç Piyasa',data:[r(b.uphP),r(b.sphP),r(b.comp)],backgroundColor:'#5EEAD4cc',borderRadius:6}]},options:opt(120)});
+  charts.f=new Chart($('#chFte'),{type:'bar',data:{labels:['İhracat','İç Piyasa'],datasets:[
+    {label:'Gereken FTE',data:[+(isFinite(a.req)?a.req:0).toFixed(2),+(isFinite(b.req)?b.req:0).toFixed(2)],backgroundColor:'#F28B8Bcc',borderRadius:6},
+    {label:'Mevcut FTE',data:[a.st,b.st],backgroundColor:'#6EE7A8cc',borderRadius:6}]},options:opt()});
+}
+
+/* ============================== DİNAMİK SAYFALAR ============================== */
+function colStats(d){
+  return d.cols.map((c,i)=>{
+    const vals=d.rows.map(r=>r[c]).filter(v=>v!==''&&v!=null),nums=vals.map(num).filter(isFinite);
+    const isNum=vals.length>0&&nums.length/vals.length>=.7;
+    return {c,i,isNum,sum:nums.reduce((x,y)=>x+y,0),avg:nums.length?nums.reduce((x,y)=>x+y,0)/nums.length:0,uniq:new Set(vals.map(String)).size,n:vals.length};
+  });
+}
+function renderDyn(){
+  const names=Object.keys(state.dyn),el=$('#v-dyn');
+  if(!names.length){
+    el.innerHTML=`<div class="card p-8 text-center"><div class="text-4xl mb-2">🧩</div><div class="hi font-semibold mb-1">Henüz dinamik sayfa yok</div>
+      <p class="mut text-sm mb-4">Yüklediğiniz Excel’de tanımlı olmayan ekstra bir çalışma sayfası (ör. “Kargo Desi Logları”, “İade Takibi”) varsa burada otomatik olarak yeni bir sayfa, veri tablosu ve KPI kartları oluşur.</p>
+      <div class="flex gap-2 justify-center flex-wrap"><button class="btn p" onclick="openModal()">Excel / API bağla</button><button class="btn" onclick="loadDemo()">Demo veriyi yükle</button></div></div>`;
+    return;
+  }
+  if(!state.dyn[ui.dynSel])ui.dynSel=names[0];
+  const d=state.dyn[ui.dynSel],cs=colStats(d),numc=cs.filter(x=>x.isNum).slice(0,3),catc=cs.find(x=>!x.isNum&&x.uniq>1&&x.uniq<=12);
+  let cards=kpiCard('Kayıt Sayısı',fmt(d.rows.length),`${d.cols.length} sütun · ${d.at.toLocaleTimeString('tr-TR')}`,'n');
+  numc.forEach(x=>cards+=kpiCard(esc(x.c)+' (Toplam)',fmt(x.sum,x.sum%1?1:0),'Ortalama '+fmt(x.avg,1),'n'));
+  if(cards.split('kpi bg-').length<5&&catc)cards+=kpiCard(esc(catc.c),fmt(catc.uniq)+' <span class="text-base mut">farklı değer</span>','Kategori sütunu','n');
+  el.innerHTML=`
+  <div class="flex gap-2 overflow-auto pb-2 mb-3">${names.map(n=>`<span class="chip ${n===ui.dynSel?'act':''}" data-n="${esc(n)}" onclick="go('dyn',this.dataset.n)">${esc(n)} <span class="dim">${fmt(state.dyn[n].rows.length)}</span></span>`).join('')}</div>
+  <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 mb-4">${cards}</div>
+  <div class="card p-4"><div class="flex flex-wrap items-center gap-2 mb-3"><h3 class="hi font-semibold mr-auto">${esc(ui.dynSel)}</h3>
+    <input class="inp" style="max-width:260px" placeholder="Ara…" value="${esc(ui.dq)}" oninput="ui.dq=this.value;ui.dlimit=100;renderDynGrid()"></div><div id="dynGrid"></div></div>`;
+  renderDynGrid();
+}
+function renderDynGrid(){
+  const d=state.dyn[ui.dynSel],box=$('#dynGrid');if(!d||!box)return;
+  const q=norm(ui.dq);let rows=d.rows;
+  if(q)rows=rows.filter(r=>d.cols.some(c=>norm(r[c]).includes(q)));
+  const s=ui.dsort;
+  if(s.i!=null){const c=d.cols[s.i];rows=[...rows].sort((x,y)=>{const a=num(x[c]),b=num(y[c]);return (isFinite(a)&&isFinite(b)?a-b:String(x[c]).localeCompare(String(y[c]),'tr'))*s.dir})}
+  const shown=rows.slice(0,ui.dlimit);
+  box.innerHTML=(rows.length?`<div class="scroll"><table class="rt"><thead><tr>${d.cols.map((c,i)=>`<th class="s" onclick="sortDyn(${i})">${esc(c)}${s.i===i?(s.dir>0?' ▲':' ▼'):''}</th>`).join('')}</tr></thead><tbody>`+
+    shown.map(r=>`<tr>${d.cols.map(c=>`<td data-l="${esc(c)}">${esc(r[c])}</td>`).join('')}</tr>`).join('')+`</tbody></table></div>`:'<div class="mut text-sm py-6 text-center">Kayıt bulunamadı.</div>')+
+    `<div class="flex items-center justify-between mt-3 text-xs mut"><span>${fmt(shown.length)} / ${fmt(rows.length)} kayıt</span>${rows.length>ui.dlimit?`<button class="btn" onclick="ui.dlimit+=200;renderDynGrid()">Daha fazla göster</button>`:''}</div>`;
+}
+function sortDyn(i){ui.dsort=ui.dsort.i===i?{i,dir:-ui.dsort.dir}:{i,dir:1};renderDynGrid()}
+
+/* ============================== EXECUTIVE ============================== */
+function renderExec(){
+  $('#v-exec').innerHTML=`<div class="big"><div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${kpis()}</div>
+  <div class="text-center dim text-xs mt-3">${esc(state.source)} · Kalan vardiya ${fmt(state.shift.remaining,1)} sa · Odak Modu — çıkmak için sağ üstteki anahtarı kapatın</div></div>`;
+}
+
+/* ============================== SİSTEM REHBERİ ============================== */
+function renderRehber(){
+  const sec=(t,b,o=true)=>`<details class="acc card mb-3" ${o?'open':''}><summary>${t}</summary><div class="px-4 pb-4 text-sm leading-relaxed">${b}</div></details>`;
+  $('#v-rehber').innerHTML=`<div class="mb-3"><h2 class="hi text-xl font-semibold">Sistem Rehberi / Nasıl Çalışır?</h2><p class="mut text-sm">Bu sayfa, panodaki her rakamın nereden geldiğini açıklar.</p></div>`+
+  sec('1 · Formüllerin Açıklaması',`
+    <p class="mb-2 hi font-medium">Gereken Personel (FTE)</p>
+    <div class="formula mb-2">FTE = Bekleyen İş Adedi ÷ (Operasyon Hedef UPH × Kalan Vardiya Saati)</div>
+    <ul class="list-disc pl-5 mut mb-3 space-y-1"><li>Hedef UPH: İhracat <b>50.000</b> adet/sa, İç Piyasa <b>25.000</b> adet/sa (bir FTE’nin/ekip biriminin saatlik hedefi).</li>
+      <li><b>Adam-saat</b> = FTE × Kalan saat. <b>Adam/Gün</b> = Adam-saat ÷ Vardiya süresi.</li>
+      <li>Bitiş süresi (saat) = Bekleyen adet ÷ (Mevcut FTE × Hedef UPH).</li></ul>
+    <div class="card2 p-3 mb-4"><b class="hi">Örnek:</b> İç Piyasa’da 300.000 adet bekliyor, 5 saat kaldı → 300.000 ÷ (25.000 × 5) = <b class="hi">2,4 FTE</b>. Mevcut kadro 2 ise 0,4 FTE açık vardır ve iş yaklaşık 6 saatte biter (1 saat sarkma).</div>
+    <p class="mb-2 hi font-medium">Bileşik Personel Verimliliği</p>
+    <div class="formula mb-2">Verimlilik = (%60 × Adet UPH Performansı) + (%40 × SKU Performansı)</div>
+    <ul class="list-disc pl-5 mut space-y-1"><li>Adet UPH Performansı = (Tamamlanan adet ÷ geçen saat ÷ FTE) ÷ Hedef UPH × 100</li>
+      <li>SKU Performansı = (Tamamlanan SKU kalemi ÷ geçen saat ÷ FTE) ÷ Hedef SPH × 100 (İhracat hedefi 15, İç Piyasa 20 SKU/sa)</li>
+      <li>Geçen saat = Vardiya süresi − Kalan vardiya saati. Kalem = Excel’deki her bir sipariş satırı.</li></ul>`)+
+  sec('2 · Veri Yükleme Kılavuzu (Excel)',`
+    <p class="mut mb-2">Excel’de aşağıdaki iki sayfa tanınır; <b>başka her sayfa otomatik dinamik sayfa</b> olur. Sütun adları büyük/küçük harf ve Türkçe karakterden bağımsızdır.</p>
+    <p class="hi font-medium mb-1">Sayfa: “Siparişler”</p>
+    <div class="scroll mb-3" style="max-height:none"><table class="rt"><thead><tr><th>Operasyon</th><th>Sipariş No</th><th>SKU</th><th>Adet</th><th>Durum</th></tr></thead><tbody>
+      <tr><td data-l="Operasyon">İhracat</td><td data-l="Sipariş No">EXP-5001</td><td data-l="SKU">EXP-001</td><td data-l="Adet">3200</td><td data-l="Durum">Tamamlandı</td></tr>
+      <tr><td data-l="Operasyon">İç Piyasa</td><td data-l="Sipariş No">DOM-5001</td><td data-l="SKU">DOM-097</td><td data-l="Adet">1200</td><td data-l="Durum">Bekliyor</td></tr></tbody></table></div>
+    <ul class="list-disc pl-5 mut mb-3 space-y-1"><li><b>Operasyon</b>: “İhracat” / “Export” ya da “İç Piyasa” / “Domestic”.</li><li><b>Durum</b>: Tamamlandı, Sevk, Hazır, Done → tamamlanmış; diğer her değer → bekleyen.</li></ul>
+    <p class="hi font-medium mb-1">Sayfa: “Personel” (opsiyonel)</p>
+    <p class="mut mb-3">Sütunlar: <code>Operasyon</code>, <code>Personel (FTE)</code>. Yoksa kadro Özet sekmesinden elle girilir.</p>
+    <button class="btn p" onclick="downloadTemplate()">⬇ Örnek Excel şablonunu indir</button>`)+
+  sec('3 · API Bağlantı Formatı',`
+    <p class="mut mb-2">“Veri Bağla → REST API” ile bir GET uç noktası girin. Yanıt JSON olmalı ve CORS’a izin vermelidir. Otomatik yenilemede yeni sipariş numarası geldiğinde bildirim + ses tetiklenir.</p>
+<pre>{
+  "shift": { "total": 8, "remaining": 5 },            // opsiyonel
+  "staff": { "export": 3, "domestic": 2 },            // opsiyonel
+  "orders": [
+    { "operation": "export",   "orderNo": "EXP-5001", "sku": "EXP-001", "qty": 3200, "status": "done" },
+    { "operation": "domestic", "orderNo": "DOM-5001", "sku": "DOM-097", "qty": 1200, "status": "pending" }
+  ],
+  "Iade Takibi": [ { "IadeNo": "IAD-1", "Adet": 3 } ]  // bilinmeyen diziler → dinamik sayfa
+}</pre>
+    <p class="mut mt-2">Sadece bir dizi (<code>[ {...}, {...} ]</code>) dönerse sipariş listesi kabul edilir. Alan adları: operation/operasyon, orderNo/sipariş no, sku, qty/adet, status/durum.</p>`)+
+  sec('4 · Renk Kodları ve Anlamları',`
+    <div class="scroll" style="max-height:none"><table class="rt"><thead><tr><th>Renk</th><th>Verimlilik / UPH / SPH</th><th>FTE Kapasitesi</th><th>Bitiş</th></tr></thead><tbody>
+      <tr><td data-l="Renk"><b class="g">● Yeşil</b></td><td data-l="Verimlilik">≥ %95 — hedefte</td><td data-l="FTE">Gereken ≤ Mevcut</td><td data-l="Bitiş">Vardiya bitiminden önce</td></tr>
+      <tr><td data-l="Renk"><b class="y">● Sarı</b></td><td data-l="Verimlilik">%80 – %95 — dikkat</td><td data-l="FTE">Gereken, mevcudun en fazla %10 üstünde</td><td data-l="Bitiş">Sarkma ≤ kalan sürenin %10’u</td></tr>
+      <tr><td data-l="Renk"><b class="r">● Kırmızı</b></td><td data-l="Verimlilik">&lt; %80 — müdahale</td><td data-l="FTE">Gereken &gt; Mevcut × 1,10 → <b>Darboğaz alarmı</b></td><td data-l="Bitiş">Belirgin sarkma</td></tr>
+      <tr><td data-l="Renk"><b class="n">● Gri</b></td><td data-l="Verimlilik">Veri yok</td><td data-l="FTE">—</td><td data-l="Bitiş">—</td></tr></tbody></table></div>
+    <p class="mut mt-3"><b class="hi">Alarmlar:</b> Kırmızı FTE durumu üst bantta kırmızı uyarı, sesli ikaz ve (izin verildiyse) tarayıcı bildirimi üretir. Verimlilik %80’in altına inince sarı uyarı bildirimi gelir. Sesler için sayfaya bir kez dokunmak gerekir; bildirim için 🔔 düğmesi ile izin verin.</p>`)+
+  sec('5 · Ekran Modları',`<ul class="list-disc pl-5 mut space-y-1"><li><b>Odak Modu</b> (sağ üst anahtar): tabloları gizler, yalnızca 4 dev KPI kartını gösterir.</li><li><b>What-If Simülatörü</b> (Özet): kadro havuzunu iki operasyon arasında kaydırıp bitiş saatlerini görün; “Uygula” ile gerçek kadroya işleyin.</li><li>Mobilde tablolar dokunmatik bilgi kartlarına dönüşür; alt menüden sekmeler arasında gezinilir.</li></ul>`,false);
+}
+
+/* ============================== GENEL ============================== */
+function renderAll(){
+  calcAll();
+  $('#srcInfo').textContent=state.source+(state.updated?' · '+state.updated.toLocaleTimeString('tr-TR'):'');
+  renderOzet();renderPerf();renderDyn();renderExec();renderNav();showView();
+  if(ui.view==='perf'&&!ui.exec)drawCharts();
+}
+function openModal(){$('#modal').classList.remove('hidden');ctx()}
+function closeModal(){$('#modal').classList.add('hidden')}
+function modalTab(t){['xl','api'].forEach(k=>{$('#mp-'+k).classList.toggle('hidden',k!==t);$('#mt-'+k).classList.toggle('act',k===t)})}
+function saveCfg(){try{localStorage.setItem('depoCfg',JSON.stringify({exec:ui.exec,view:ui.view,sound:ui.sound}))}catch(e){}}
+function loadCfg(){try{const c=JSON.parse(localStorage.getItem('depoCfg')||'{}');if(c.view)ui.view=c.view;ui.exec=!!c.exec;if(c.sound===false){ui.sound=false;$('#btnSound').classList.remove('on');$('#btnSound').textContent='🔇'}}catch(e){}}
+
+window.addEventListener('DOMContentLoaded',()=>{
+  loadCfg();updNotifBtn();
+  // PWA manifest
+  try{
+    const mf={name:'Depo Performans Dashboard',short_name:'Depo',display:'standalone',background_color:'#0F172A',theme_color:'#0F172A',start_url:'.',
+      icons:[{src:'data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#0F172A"/><text x="32" y="44" font-size="34" text-anchor="middle" fill="#7AA2F7" font-family="sans-serif">D</text></svg>'),sizes:'any',type:'image/svg+xml'}]};
+    const l=document.createElement('link');l.rel='manifest';l.href=URL.createObjectURL(new Blob([JSON.stringify(mf)],{type:'application/manifest+json'}));document.head.appendChild(l);
+  }catch(e){}
+  // ilk dokunuşta ses motorunu aç
+  document.addEventListener('pointerdown',()=>ctx(),{once:true});
+  // Excel sürükle-bırak
+  const dz=$('#dz'),ov=$('#dropOv');let depth=0;
+  $('#fileIn').addEventListener('change',e=>{handleFile(e.target.files[0]);e.target.value=''});
+  window.addEventListener('dragenter',e=>{e.preventDefault();depth++;ov.classList.remove('hidden')});
+  window.addEventListener('dragleave',e=>{e.preventDefault();if(--depth<=0){depth=0;ov.classList.add('hidden')}});
+  window.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over')});
+  window.addEventListener('drop',e=>{e.preventDefault();depth=0;ov.classList.add('hidden');dz.classList.remove('over');if(e.dataTransfer.files[0])handleFile(e.dataTransfer.files[0])});
+  renderRehber();
+  loadDemo(false,true);
+  showView();
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
+});
+</script>
+</body>
+</html>
